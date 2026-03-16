@@ -1,0 +1,12 @@
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+.r-library/
+.tmp_beat_upstream/
+vendor/beat/src/*.o
+vendor/beat/src/*.obj
+vendor/beat/src/*.dll
+vendor/beat/src/*.so
+vendor/beat/src/*.dylib
+vendor/beat.Rcheck/

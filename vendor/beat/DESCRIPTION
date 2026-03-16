@@ -1,0 +1,36 @@
+Package: beat
+Title: Bias-Eliminating Adapted Trees
+Version: 1.2.4
+Authors@R: c(
+    person("Eva", "Ascarza", role = c("aut","cre"), email="eascarza@hbs.edu"),
+    person("Ayelet", "Israeli", role = "aut")
+    )
+Description: A pluggable package for replicating the analysis in the XXXXXXX paper <link>.
+Depends:
+    R (>= 3.5.0)
+License: GPL-3
+LinkingTo: RcppArmadillo, RcppEigen, Rcpp
+Imports:
+    data.table,
+    RcppArmadillo,
+    DiceKriging,
+    lmtest,
+    Matrix,
+    methods,
+    Rcpp (>= 0.12.15),
+    sandwich (>= 2.4-0),
+    RcppEigen(>= 0.3.3.7),
+    doParallel,
+    foreach, 
+    iterators,
+    testthat, 
+    arrangements,
+    ROI,
+    stringi
+RoxygenNote: 7.1.2
+Suggests:
+    DiagrammeR,
+    testthat,
+    MASS
+SystemRequirements: GNU make
+URL: https://github.com/beat-labs/beat
