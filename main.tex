@@ -1,0 +1,199 @@
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{amsmath}
+\usepackage{apacite}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{amsfonts}
+\usepackage{natbib}
+\usepackage{hyperref}
+
+\title{\textbf{Advanced Extensions of the BEAT Algorithm: \\ Causality, Disentanglement, and Targeted Allocation in Clinical ML}}
+\author{Marc Bilanin 601448 \\ Aaron Wong Zi Shian 658399 \\ Marwa EL Maaroufi 639759\\ Richárd Peőcz 598495 \\\\ Erasmus University Rotterdam \\ BSc Econometrics and Operations Research}
+\date{\today}
+
+
+\begin{document}
+\begin{spacing}{1.15}
+\maketitle
+
+\section{Formulation of the Research Problem}
+The BEAT algorithm \cite{ascarza2022eliminating} mitigates proxy discrimination in Generalized Random Forests by applying a global penalty to splits that create demographic imbalances. While highly effective in minimizing standard proxy bias, BEAT's rigid framework struggles with the complexities of real-world data. 
+
+Specifically, it assumes all demographic correlations are unethical, meaning it can blindly penalize legitimate mechanisms. Moreover it strictly enforces equality at the local level of individual tree splits. This can restrict predictive efficiency, which prevents the algorithm from optimizing for macro-level diversity quotas. 
+
+The research question is: \textit{How can the BEAT algorithm be extended to differentiate between legitimate causal pathways and unethical proxies (via C-BEAT), and how BEAT can be modified into a global system to achieve targeted diversity quotas in treatment allocation (via GOTBU?}
+
+\section{Motivation}
+Our current knowledge is lacking because real-world algorithmic fairness rarely fits BEAT's baseline assumptions. First, in healthcare, variables correlating with demographics (e.g., comorbidities) are often legitimate clinical mechanisms, meaning BEAT's blind penalty destroys necessary predictive utility. 
+
+Secondly, optimal clinical policy sometimes requires affirmative action (e.g., targeting preventative care toward historically underserved groups), which BEAT's strict parity objective actively penalizes. Exploring these two extensions helps transform BEAT from a theoretical construct to a deployable clinical and marketing tool.
+
+\section{Relevance}
+This problem is critical for the ethical deployment of machine learning in healthcare and policy-making. Regulators require algorithms to be fair, but hospital administrators require them to be medically accurate and capable of targeting vulnerable populations. Extending BEAT to accommodate causal realities, and asymmetric policy goals provides a highly relevant, flexible toolkit for modern econometricians and data scientists.
+
+
+\section*{Literature}
+This research builds on the literature on heterogeneous treatment effect estimation using tree-based methods, particularly causal forests \citep{athey2019generalized}. Generalized Random Forests provide a flexible framework for estimating these effects by recursively identifying subgroups with different treatment responses. 
+
+Beyond estimation, causal forests are relevant for decision-making. When treatment effects vary across individuals, policymakers and practitioners must decide who should receive an intervention. Tree-based methods provide a natural framework for this as they help define personalized treatment rules that allocate resources to individuals most efficiently. These models are increasingly used in settings such as healthcare targeting, marketing interventions, and public policy allocation. However, as these algorithms influence real-world decisions, concerns arise about the fairness of the resulting targeting policies.
+
+When used to guide treatment allocation, machine learning models may exploit hidden correlations between predictive variables and protected attributes, leading to discriminatory outcomes. The BEAT algorithm \citep{ascarza2022eliminating} addresses this concern by modifying the tree-splitting criterion to penalize candidate splits that create demographic divergence across protected groups. BEAT incorporates a fairness penalty into the objective function to prevent the model from relying on proxy variables while still identifying meaningful treatment heterogeneity.
+
+%%here is the part about extensions that needs to be adapted to the ones that we are using
+
+%%part about C BEAT
+To explore ways of improving BEAT’s fairness mechanism, we draw on algorithmic fairness literature. For causal extensions, we rely on the concept of path-specific fairness and resolving variables \citep{kilbertus2017avoiding, chiappa2019path}, which emphasize distinguishing between legitimate and illegitimate causal pathways linking protected attributes to decisions. These frameworks highlight that not all correlations between protected attributes and predictive variables are necessarily unfair, as some may arise from legitimate mechanisms rather than discriminatory proxies. 
+
+%% literature for the other extensions to be added here 
+Bias-Eliminating Adapted Trees (BEAT) framework \cite{ascarza2022eliminating}, successfully eliminate the need for out-of-sample protected attributes by enforcing demographic parity during tree induction. However, enforcing these rigid local penalties reduce predictive utility (Stempel et al., 2024) and fails to accommodate dynamic, real-world resource constraints, such as shifting intervention budgets. Concurrently, while the literature on Fair Top-$k$ Ranking \cite{zehlike2017fa}; \cite{singh2018fairness} addresses budget-constrained macro-quotas, it is traditionally applied to standard predictive classification rather than the estimation of heterogeneous treatment effects.
+
+To bridge this gap, this research proposes the Targeted Boost with Global Optimization Loop. Drawing on cost-sensitive learning principles (Menon & Williamson, 2018; Bozonier et al., 2020), this methodology replaces BEAT’s restrictive distance penalty with a dynamic demographic reward ($\lambda$) conditioned directly on the target's treatment effect ($\hat{\tau}$). When tuned via a Top-$k$ global feedback loop, this novel in-processing causal forest allows decision-makers to guarantee strict global macro-quotas within fixed budgets while preserving maximum local predictive efficiency.
+
+\section{Data}
+In the original paper \cite{ascarza2022eliminating}, the BEAT model is applied by running a randomized marketing experiment where individuals are assigned a discount treatment. Using the experimental data, they estimate treatment effects, rank individuals by predicted benefit, then simulate a targeting policy by treating the top fraction of individuals. They evaluate each method based on the trade-off between policy performance and fairness across demographic groups.
+
+However, their experimental setup is based on a simulated targeting policy in a marketing context, where the allocation stage simply treats the top percentage of individuals according to predicted scores. For our project, we would like to move away from this structure as we find it somewhat artificial and not fully aligned with realistic decision-making settings. Instead, we would prefer to focus on how fairness constraints affect the estimation and allocation process in a more realistic framework.
+
+Therefore, we propose applying the model to a medical context and plan on using the freely available \textbf{UCI Diabetes 130-US Hospitals Dataset}. 
+
+\begin{itemize}
+    \item \textbf{Characteristics:} Contains over 100,000 clinical encounters spanning 10 years. 
+    \item \textbf{Variables:} Unprotected features ($X$) include lab procedure counts, medications, and payer codes. Protected attributes ($Z$) include Race, Gender, and Age. 
+    \item \textbf{Application:} The treatment ($W$) evaluates specific diabetic medication regimens, and the outcome ($Y$) is 30-day hospital readmission. This dataset is ideal because it contains pure clinical signals (lab results) intertwined with socio-economic proxies (payer codes), providing the perfect testing ground for causal penalties and proxy disentanglement.
+\end{itemize}
+
+
+\section{Methodology}
+\subsection*{Simulation}
+
+In the original paper, the authors first run a simulation study to evaluate the BEAT algorithm in a controlled environment. They generate synthetic data where protected attributes, unprotected variables, and treatment effects are correlated. This allows them to compare different methods (standard causal forests, debiasing approaches, and BEAT) and analyze how well each method balances predictive performance and fairness under different levels of bias.
+In our paper we plan on replicating this method and extending it based on the data and code made available by the authors.
+
+\subsection*{Experiment}
+To test the methods, they use data from a marketing experiment in which participants are randomly exposed to a discount-type treatment. Using this experimental data, they estimate individual treatment scores with different algorithms and simulate a targeting policy by assigning treatment to the individuals with the highest predicted scores. They then compare the resulting policies in terms of both effectiveness and fairness across demographic groups.
+
+We apply the same general logic in a healthcare setting using the UCI Diabetes dataset. First, we define the outcome as 30-day readmission, the treatment as a diabetes intervention or medication choice, the covariates as the patients’ clinical information, and the protected attributes as race, gender, and age. Then, using the training data, we estimate which patients are predicted to benefit most from treatment with different methods. Finally, in the test data, we simulate an allocation rule by prioritizing treatment for the patients with the highest predicted benefit and compare the resulting policies in terms of both effectiveness and fairness.
+
+
+\subsection*{Detailed Outline of Extension: C-BEAT (Path-Specific Causal Fairness)}
+
+The baseline BEAT algorithm improves fairness in personalized policy learning by penalizing candidate tree splits that create demographic divergence across protected groups. In doing so, it reduces proxy discrimination and prevents the model from relying too heavily on variables that separate individuals along protected dimensions.
+
+However, this baseline approach implicitly treats all correlations between protected attributes and predictive variables as equally undesirable. In practice, this can be too rigid. In many real-world settings, especially healthcare, some variables correlated with protected attributes may reflect legitimate mechanisms, such as clinical severity or disease history, rather than unfair bias. Penalizing these variables in the same way as socio-economic or administrative proxies may reduce predictive accuracy and prevent the model from identifying meaningful treatment heterogeneity.
+
+To address this limitation, we propose a causal extension of BEAT, referred to as \textbf{C-BEAT}, which integrates causal reasoning into the fairness penalty. Instead of penalizing all demographic imbalance equally, the algorithm distinguishes between \textbf{legitimate causal pathways} and \textbf{proxy pathways}, applying stronger penalties only when imbalance is generated through variables that act as demographic proxies.
+
+\subsubsection*{Step 1: Causal Discovery and Edge Weight Estimation ($\theta$)}
+
+Unlike baseline BEAT, which treats all unprotected variables identically, C-BEAT mathematically maps the causal environment before generating fairness penalties.
+
+First, we utilize constraint-based causal structure learning (e.g., the PC Algorithm) to define a Directed Acyclic Graph (DAG) detailing the relationships between the protected attributes $Z$, unprotected features $X$, and the outcome $Y$. To resolve Markov equivalences and ensure structural validity, protected demographic attributes ($Z$) are strictly constrained as root nodes with zero in-degree, reflecting their immutable nature.
+This step is motivated by causal fairness frameworks such as \cite{kilbertus2017avoiding}, \cite{kusner2017counterfactual}, and \cite{chiappa2019path}, which emphasize the importance of distinguishing between permissible and impermissible causal paths from protected attributes to decisions.\\
+
+Second, for every candidate splitting variable $X_j$, we calculate its Average Causal Effect (ACE) on the outcome $Y$, denoted as $\theta_{X_j \rightarrow Y}$. To isolate the true causal effect from spurious correlation, we apply Judea Pearl’s \textbf{Backdoor Criterion} to the DAG to identify the required adjustment set $C$ (the confounding variables). We then estimate $\theta_{X_j \rightarrow Y}$ using \textbf{Double Machine Learning} \cite{chernozhukov2018double}, orthogonalizing both $X_j$ and $Y$ with respect to $C$. Finally, these estimates are min-max normalized such that $|\theta_{X_j \rightarrow Y}| \in [0,1]$. This value mathematically quantifies the isolated, objective causal power of the variable.
+
+\subsubsection*{Step 2: Expert Input and the Assignment of Legitimacy Scores ($\kappa$)}
+
+To bridge the gap between statistical correlation and socio-legal compliance, C-BEAT introduces a "Human-in-the-Loop" mechanism. For each potential splitting variable $X_j$, we assign a legitimacy score $\kappa_j \in [0,1]$ through a process of expert elicitation.
+
+Crucially, this expert evaluation resolves the problem of non-stationary bias. Machine learning algorithms are bound by static historical data, meaning they will penalize variables based on historical correlations (e.g., past discriminatory policies) even if those policies have since been abolished. The primary task of the domain expert is to evaluate the causal graph not just for its historical accuracy, but for its validity in the present inference environment.
+
+The expert assigns the $\kappa_j$ score based on the following criteria:
+\begin{itemize}
+\item \textbf{Impermissible Proxies ($\kappa_j \to 0$):} If the expert determines a variable exists strictly downstream of historical prejudice and continues to act as an unethical proxy in the present day, it receives a score of 0. This mathematically forbids the tree from exploiting it.
+\item \textbf{Legitimate Mechanisms ($\kappa_j \to 1$):} If the variable is a direct, biological, or economic driver of the outcome, it receives a score closer to 1, preserving its predictive utility.
+\item \textbf{Temporally Decayed Proxies ($\kappa_j \to 1$):} If a variable is heavily correlated with a protected attribute in the historical training data, but the expert certifies that the systemic mechanism driving that correlation has been dismantled, the variable can safely be assigned a high legitimacy score. Because the correlation is an artifact of the past, the expert uses $\kappa_j$ to explicitly override the historical bias, allowing the model to safely utilize the variable's predictive power without laundering past discrimination.
+\end{itemize}
+By explicitly defining $ \kappa_j $ through expert consensus prior to training, C-BEAT ensures that the algorithm does not unilaterally decide which demographic imbalances are acceptable based solely on outdated data. Instead, it mathematically enforces the ethical guidelines and present-day realities defined by human practitioners.
+
+
+\subsubsection*{Step 3: The Dynamic Causal Fairness Objective Function}
+
+We modify BEAT's splitting criterion by replacing the static global penalty with a dynamic, feature-specific penalty ($\lambda_{X_j}$). For a candidate split $s$ based on variable $X_j$, the decision tree seeks the split that maximizes:
+
+
+$$\max_s \left(\Delta(s) - \lambda_{X_j} \cdot \text{Dist}(\overline{Z}_{C_1},\overline{Z}_{C_2})\right)$$
+
+
+where $\Delta(s)$ is the causal information gain, and $\text{Dist}(\cdot)$ measures the demographic divergence of the protected attribute $Z$ between the two child nodes.
+
+The dynamic penalty weight is defined via a decaying exponential function:
+
+
+$$\lambda_{X_j} = \lambda_{base} \cdot \exp\Big(- \alpha \cdot \kappa_j \cdot |\theta_{X_j \rightarrow Y}| \Big)$$
+
+
+where:
+\begin{itemize}
+\item $\lambda_{base}$ is the maximum global fairness penalty.
+\item $\alpha$ is a hyperparameter scaling the tolerance for causal utility.
+\item $\kappa_j$ is the expert legitimacy score (Step 2).
+\item $\theta_{X_j \rightarrow Y}$ is the normalized causal edge weight (Step 1).
+\end{itemize}
+
+This exponential formulation creates a safety mechanism. If a variable is a spurious correlation, Double Machine Learning will expose it ($\theta = 0$), leaving the exponent at zero and locking the penalty at $\lambda_{base}$. Conversely, if a variable has a high causal effect ($\theta \to 1$) but relies on unethical variables/proxies, the expert prevents it ($\kappa_j = 0$), again setting the penalty at its maximum value. The fairness penalty can only decrease from $\lambda_{base}$, allowing the split to occur only when a variable possesses both causation and explicit socio-legal permission.
+
+\subsection*{Detailed Outline of Extension: BTGQ (Biased Targeting for Global Quotas)}
+
+The baseline BEAT algorithm improves fairness by penalizing candidate tree splits that create difference in protected attributes across child nodes. However, this local approach achieves parity at every leaf node, which won't necessarily be the optimal way to achieve a global fairness quota. In practice, especially under strict resource constraints, this is problematic. Forcing local equality restricts the algorithm from capturing highly predictive, pure data splits, severely reducing the model's overall predictive efficiency. Furthermore, BEAT lacks a mechanism to dynamically adjust to changing budget constraints or specific Diversity, Equity, and Inclusion (DEI) quotas.
+
+To address this limitation, we propose an extension of BEAT, referred to as Biased Targeting for Global Qutas. Instead of penalizing protected attribute imbalance locally, the algorithm introduces an artificial reward for targeted groups during the local tree-building phase, and tunes the degree of this uplift via a global optimization loop to satisfy budget and diversity constraints.
+
+\subsubsection*{Step 1: The Local Split Criterion (Targeted Uplift)}
+We modify BEAT's splitting criterion by abandoning the demographic distance penalty and replacing it with a reward mechanism. 
+
+For a candidate split $s$, the decision tree identifies the child node with the higher predicted Conditional Average Treatment Effect (CATE), designated as the Target Node ($C_{target}$). The algorithm seeks the split that maximizes:
+$$ \max_{s} \left( \Delta(s) + \lambda \cdot \text{Uplift}_{\text{BTGQ}}(s) \right) $$
+
+where $\Delta(s)$ is the causal information gain and $\lambda \ge 0$ is the global bias hyperparameter.
+
+The new targeted uplift term is defined as:
+$$ \text{Uplift}_{\text{BTGQ}}(s) = f(Z_{C_{target}}) \times \hat{\tau}_{C_{target}} $$
+
+where:
+\begin{itemize}
+    \item $f(Z_{C_{target}})$ measures the concentration or directional shift of the protected attribute $Z$ within the target node,
+    \item $\hat{\tau}_{C_{target}}$ is the predicted treatment effect within the target node.
+\end{itemize}
+
+This synergistic term ensures the tree is only rewarded when it finds proxy variables that isolate the target demographic into nodes that also possess a high baseline treatment effect. This artificially inflates the final $\hat{\tau}$ scores for the target group without destroying the model's fundamental ranking logic.
+
+\subsubsection*{Step 2: Handling Attribute Dimensionality}
+The function $f(Z)$ dynamically adapts based on the data type of the protected attribute:
+\begin{itemize}
+    \item \textbf{Binary Attributes:} $f(Z) = \bar{Z}_{C_{target}}$, representing the raw proportion of the minority group in the node.
+    \item \textbf{Multi-Categorical Attributes:} $f(Z) = \mathbf{P}_{C_{target}} \cdot \mathbf{W}$, where $\mathbf{P}$ is the vector of demographic proportions and $\mathbf{W}$ is a predefined weight vector assigning priority to specific groups.
+    \item \textbf{Continuous Attributes (e.g., Age/Income):} $f(Z) = \bar{Z}_{\text{scaled}, C_{target}}$, where the variable is standardized using z-scores, rewarding the algorithm for shifting the mean of the node toward the desired demographic direction.
+\end{itemize}
+
+\subsubsection*{Step 3: The Global Optimization Loop}
+Because $\lambda$ operates at the local split level, its exact impact on the final global distribution is unknown until the forest is built. Therefore, BTGQ treats $\lambda$ as a budget-conditioned hyperparameter, optimized via an automated feedback loop.
+
+The optimization requires two policy inputs: the Budget threshold $B$ (e.g., $B = 0.50$ for the top 50\% of the population) and the Target Quota $Q$ (the desired demographic representation within that budgeted slice).
+
+The optimization loop proceeds as follows:
+\begin{enumerate}
+    \item \textbf{Initialization:} Set $\lambda = 0$ to establish an unbiased baseline model.
+    \item \textbf{Model Training:} Train the Generalized Random Forest using the modified BTGQ split criterion.
+    \item \textbf{Ranking:} Predict the artificially inflated treatment effect ($\hat{\tau}_i$) for all individuals and sort them in descending order.
+    \item \textbf{Evaluation:} Truncate the ranked list at Budget $B$ and calculate the actual representation of the target demographic ($q_{\text{actual}}$).
+    \item \textbf{Hyperparameter Tuning:} If $q_{\text{actual}} < Q$, increase $\lambda$ to demand heavier artificial uplift. If $q_{\text{actual}} > Q$, decrease $\lambda$.
+    \item \textbf{Convergence:} Iterate using binary search until $q_{\text{actual}} \approx Q$. 
+\end{enumerate}
+
+By shifting the fairness constraint from the local branch to the global ranking, BTGQ allows decision-makers to achieve exact macro-level quotas under strict budget constraints while preserving significantly more predictive power than the baseline BEAT algorithm.
+
+\textit{Note: The final seminar report will likely focus deeply on the extension branch that yields the most robust empirical and theoretical results during the initial data modeling phase.}
+
+\newpage
+\bibliographystyle{apalike}
+\nocite{*}
+\bibliography{Reference_Proposal}
+
+\end{spacing}
+
+\end{document}
