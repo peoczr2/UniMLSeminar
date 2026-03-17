@@ -11,6 +11,8 @@ The paper PDF and appendix are stored in the repository root. The research propo
 - `vendor/beat/`: a vendored copy of the original BEAT R package source imported from `ayeletis/beat`
 - `scripts/setup_beat.R`: installs BEAT from the vendored source into a local project library
 - `scripts/run_beat_smoke_test.R`: runs a small balanced causal forest example to verify the package loads and trains
+- `scripts/run_simulations.R`: runs the reusable simulation framework for comparing paper-style scenarios and methods
+- `simulations/`: flat simulation files with one file per method and one file per scenario
 - `main.tex`: project proposal and extension ideas
 
 Vendoring the package instead of linking to it as a submodule means future changes to BEAT are tracked directly in this repository. That is the safer setup for a research codebase where you expect to modify the upstream implementation.
@@ -38,6 +40,29 @@ Rscript scripts/run_beat_smoke_test.R
 ```
 
 If the toolchain is installed correctly, the script trains a small `balanced_causal_forest` model and prints a prediction summary.
+
+## Run the simulation framework
+
+After setup succeeds, you can run the scenario benchmark scaffold with:
+
+```powershell
+Rscript scripts/run_simulations.R
+```
+
+The default run executes the four BEAT-paper-style scenarios and compares:
+
+- `CF-FD`
+- `CF-NP`
+- `Debiased`
+- `BEAT`
+
+Outputs are written to `outputs/simulations/`. Add or modify scenarios directly in the `simulations/scenario_*.R` files.
+
+You can also run a single scenario directly, for example:
+
+```powershell
+Rscript simulations/scenario_1_high_corr_tau_z.R
+```
 
 ## Where to modify BEAT
 
