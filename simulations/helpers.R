@@ -160,7 +160,16 @@ flip_protected <- function(z) {
     if (length(unique_values) == 2 && identical(unique_values, c(0, 1))) {
       z_flipped[, j] <- 1 - z_flipped[, j]
     } else {
-      z_flipped[, j] <- -as.numeric(scale(z_flipped[, j]))
+      z_mean <- mean(z_flipped[, j], na.rm = TRUE)
+      z_sd <- stats::sd(z_flipped[, j], na.rm = TRUE)
+
+      if (isTRUE(all.equal(z_sd, 0))) {
+        next
+      }
+
+      z_std <- (z_flipped[, j] - z_mean) / z_sd
+      z_std_shifted <- ifelse(z_std >= 0, z_std - 1, z_std + 1)
+      z_flipped[, j] <- z_std_shifted * z_sd + z_mean
     }
   }
   z_flipped

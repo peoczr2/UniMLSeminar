@@ -7,23 +7,27 @@ target_top_share <- function(scores, share) {
 }
 
 policy_value <- function(targeted, y, w, treatment_probability = 0.5) {
-  mean(ifelse(w == targeted, y / treatment_probability, 0), na.rm = TRUE)
+  mean(ifelse(targeted == 1L & w == 1L, y / treatment_probability, 0), na.rm = TRUE)
 }
 
 relative_efficiency <- function(targeted, y, w) {
   random_targeted <- integer(length(targeted))
   random_targeted[sample.int(length(targeted), sum(targeted))] <- 1L
   baseline <- policy_value(random_targeted, y, w)
+  100 * (policy_value(targeted, y, w) - baseline)
+}
 
-  if (isTRUE(all.equal(baseline, 0))) {
+imbalance_metric <- function(targeted, z_matrix) {
+  targeted_idx <- targeted == 1L
+  non_targeted_idx <- targeted == 0L
+
+  if (!any(targeted_idx) || !any(non_targeted_idx)) {
     return(NA_real_)
   }
 
-  100 * (policy_value(targeted, y, w) / baseline - 1)
-}
-
-imbalance_metric <- function(targeted, z_binary) {
-  abs(mean(targeted[z_binary == 1]) - mean(targeted[z_binary == 0]))
+  z_targeted <- colMeans(z_matrix[targeted_idx, , drop = FALSE])
+  z_non_targeted <- colMeans(z_matrix[non_targeted_idx, , drop = FALSE])
+  sqrt(sum((z_targeted - z_non_targeted) ^ 2))
 }
 
 delta_policy_metric <- function(targeted, targeted_twin) {
@@ -33,7 +37,7 @@ delta_policy_metric <- function(targeted, targeted_twin) {
 evaluate_method <- function(test_data, method_result, target_share, cf_fd_imbalance) {
   targeted <- target_top_share(method_result$score, target_share)
   targeted_twin <- target_top_share(method_result$twin_score, target_share)
-  raw_imbalance <- imbalance_metric(targeted, test_data$Z[, "Z1"])
+  raw_imbalance <- imbalance_metric(targeted, test_data$Z)
 
   data.frame(
     method = method_result$method,

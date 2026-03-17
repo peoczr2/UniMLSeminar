@@ -1,9 +1,55 @@
 run_scenario_1_high_corr_tau_z <- function(repo_root, output_dir, n_train, n_test, num_trees, beat_penalty, target_share, seed) {
   set.seed(seed)
 
-  features <- make_base_features(n_train + n_test, corr_strength = 6)
-  tau <- as.numeric(scale(pmax(features$X[, 1], 0) - 0.5 * features$X[, 3] + features$Z[, "Z1"]))
-  sim_data <- make_standard_train_test(features$X, features$Z, tau, n_train, n_test)
+  n_total <- n_train + n_test
+
+  x1 <- rnorm(n_total, mean = 0, sd = 1)
+  x2 <- rnorm(n_total, mean = 0, sd = 1)
+  x3 <- rnorm(n_total, mean = 0, sd = 1)
+  x4 <- rnorm(n_total, mean = 0, sd = 1)
+  x5 <- rbinom(n_total, size = 1, prob = 0.3)
+  x6 <- rbinom(n_total, size = 1, prob = 0.3)
+  x7 <- rbinom(n_total, size = 1, prob = 0.3)
+  x8 <- rbinom(n_total, size = 1, prob = 0.3)
+  x9 <- rbinom(n_total, size = 1, prob = 0.3)
+  x10 <- rbinom(n_total, size = 1, prob = 0.3)
+  X <- cbind(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
+  colnames(X) <- paste0("X", seq_len(ncol(X)))
+
+  z1_prob <- plogis(6 * x2)
+  z1 <- rbinom(n_total, size = 1, prob = z1_prob)
+  z2 <- rnorm(n_total, mean = 0, sd = 1)
+  z3 <- rnorm(n_total, mean = 0, sd = 1)
+  z4 <- rbinom(n_total, size = 1, prob = 0.3)
+  Z <- cbind(Z1 = z1, Z2 = z2, Z3 = z3, Z4 = z4)
+
+  tau_raw <- pmax(x1, 0) - 0.5 * x3 + z1
+  tau <- as.numeric(scale(tau_raw))
+
+  W <- rbinom(n_total, size = 1, prob = 0.5)
+  Y <- tau * W + rnorm(n_total, mean = 0, sd = 1)
+
+  train_idx <- seq_len(n_train)
+  test_idx <- seq.int(n_train + 1, n_total)
+
+  sim_data <- list(
+    train = list(
+      X = X[train_idx, , drop = FALSE],
+      Z = Z[train_idx, , drop = FALSE],
+      X_full = cbind(X[train_idx, , drop = FALSE], Z[train_idx, , drop = FALSE]),
+      W = W[train_idx],
+      Y = Y[train_idx],
+      tau = tau[train_idx]
+    ),
+    test = list(
+      X = X[test_idx, , drop = FALSE],
+      Z = Z[test_idx, , drop = FALSE],
+      X_full = cbind(X[test_idx, , drop = FALSE], Z[test_idx, , drop = FALSE]),
+      W = W[test_idx],
+      Y = Y[test_idx],
+      tau = tau[test_idx]
+    )
+  )
 
   method_results <- list(
     fit_cf_fd(sim_data, num_trees, seed),
@@ -13,7 +59,7 @@ run_scenario_1_high_corr_tau_z <- function(repo_root, output_dir, n_train, n_tes
   )
 
   cf_fd_targeted <- target_top_share(method_results[[1]]$score, target_share)
-  cf_fd_imbalance <- imbalance_metric(cf_fd_targeted, sim_data$test$Z[, "Z1"])
+  cf_fd_imbalance <- imbalance_metric(cf_fd_targeted, sim_data$test$Z)
 
   metrics_df <- do.call(
     rbind,

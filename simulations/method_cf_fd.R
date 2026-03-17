@@ -1,5 +1,5 @@
 fit_cf_fd <- function(sim_data, num_trees, seed) {
-  fit <- beat::causal_forest(
+  fit <- beat:::causal_forest(
     sim_data$train$X_full,
     sim_data$train$Y,
     sim_data$train$W,
@@ -11,7 +11,7 @@ fit_cf_fd <- function(sim_data, num_trees, seed) {
 
   list(
     method = "CF-FD",
-    score = as.numeric(predict(fit, sim_data$test$X_full)$predictions),
-    twin_score = as.numeric(predict(fit, twin_full)$predictions)
+    score = as.numeric(beat:::predict.causal_forest(fit, sim_data$test$X_full)$predictions),
+    twin_score = as.numeric(beat:::predict.causal_forest(fit, twin_full)$predictions)
   )
 }
