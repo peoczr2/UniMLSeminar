@@ -23,7 +23,9 @@
 namespace grf {
 
 ForestTrainer balanced_instrumental_trainer(double reduced_form_weight,
-                                   bool stabilize_splits);
+                                            bool stabilize_splits);
+ForestTrainer btgq_instrumental_trainer(double reduced_form_weight,
+                                        bool stabilize_splits);
 ForestTrainer instrumental_trainer(double reduced_form_weight,
                                    bool stabilize_splits);
 

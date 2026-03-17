@@ -31,6 +31,10 @@ namespace grf
 
   Data::Data() : num_rows(0),
                  num_cols(0),
+                 num_target_weight_cols(0),
+                 target_weight_penalty(0.0),
+                 target_weight_penalty_metric(""),
+                 btgq_lambda(0.0),
                  outcome_index(),
                  treatment_index(),
                  instrument_index(),
@@ -253,6 +257,16 @@ namespace grf
   {
     this->num_target_weight_cols = num_cols;
   }
+
+  void Data::set_btgq_target_group(const std::vector<double> &target_group)
+  {
+    this->btgq_target_group = target_group;
+  }
+
+  void Data::set_btgq_lambda(double btgq_lambda)
+  {
+    this->btgq_lambda = btgq_lambda;
+  }
   //----  get methods start from here -----
   void Data::get_all_values(std::vector<double> &all_values,
                             std::vector<size_t> &sorted_samples,
@@ -392,6 +406,16 @@ namespace grf
   std::string Data::get_target_weight_penalty_metric() const
   {
     return target_weight_penalty_metric;
+  }
+
+  double Data::get_btgq_target_group(size_t row) const
+  {
+    return btgq_target_group.at(row);
+  }
+
+  double Data::get_btgq_lambda() const
+  {
+    return btgq_lambda;
   }
 
   // size_t Data::get_target_weight_ncols() const

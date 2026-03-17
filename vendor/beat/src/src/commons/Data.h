@@ -73,6 +73,10 @@ namespace grf
 
     void set_num_target_weight_cols(size_t num_cols);
 
+    void set_btgq_target_group(const std::vector<double> &target_group);
+
+    void set_btgq_lambda(double btgq_lambda);
+
     /**
    * Sorts and gets the unique values in `samples` at variable `var`.
    *
@@ -121,6 +125,10 @@ namespace grf
 
     size_t get_num_target_weight_cols() const;
 
+    double get_btgq_target_group(size_t row) const;
+
+    double get_btgq_lambda() const;
+
   protected:
     size_t num_rows;
     size_t num_cols;
@@ -130,6 +138,8 @@ namespace grf
     std::string target_weight_penalty_metric;
 
     arma::cube target_avg_weights;
+    std::vector<double> btgq_target_group;
+    double btgq_lambda;
 
     std::set<size_t> disallowed_split_variables;
     nonstd::optional<std::vector<size_t>> outcome_index;

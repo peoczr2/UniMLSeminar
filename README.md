@@ -11,6 +11,7 @@ The paper PDF and appendix are stored in the repository root. The research propo
 - `vendor/beat/`: a vendored copy of the original BEAT R package source imported from `ayeletis/beat`
 - `scripts/setup_beat.R`: installs BEAT from the vendored source into a local project library
 - `scripts/run_beat_smoke_test.R`: runs a small balanced causal forest example to verify the package loads and trains
+- `scripts/run_btgq_smoke_test.R`: runs a small BTGQ causal forest example and tunes `lambda` to a quota target
 - `main.tex`: project proposal and extension ideas
 
 Vendoring the package instead of linking to it as a submodule means future changes to BEAT are tracked directly in this repository. That is the safer setup for a research codebase where you expect to modify the upstream implementation.
@@ -38,6 +39,14 @@ Rscript scripts/run_beat_smoke_test.R
 ```
 
 If the toolchain is installed correctly, the script trains a small `balanced_causal_forest` model and prints a prediction summary.
+
+To exercise the BTGQ extension, run:
+
+```powershell
+Rscript scripts/run_btgq_smoke_test.R
+```
+
+This trains a baseline `btgq_causal_forest`, tunes `lambda` with `tune_btgq_causal_forest`, and prints the achieved quota trace.
 
 ## Where to modify BEAT
 
