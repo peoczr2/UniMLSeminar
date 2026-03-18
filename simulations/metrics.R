@@ -47,6 +47,18 @@ imbalance_metric <- function(targeted, z_matrix) {
   sqrt(sum((z_targeted - z_non_targeted) ^ 2))
 }
 
+## Demographic composition of the targeted group only.
+## With binary `Z1`, this is the share of targeted units that belong to the protected group.
+targeted_group_demographic <- function(targeted, z_matrix) {
+  targeted_idx <- targeted == 1L
+
+  if (!any(targeted_idx)) {
+    return(NA_real_)
+  }
+
+  mean(z_matrix[targeted_idx, 1L])
+}
+
 ## Scenario-specific protected-attribute input for imbalance:
 ## use `Z1` only to mirror the paper-style table comparisons.
 scenario_imbalance_input <- function(test_data) {
@@ -65,12 +77,14 @@ evaluate_method <- function(test_data, method_result, target_share, cf_fd_imbala
   targeted <- target_top_share(method_result$score, target_share)
   targeted_twin <- target_top_share(method_result$twin_score, target_share)
   raw_imbalance <- imbalance_metric(targeted, scenario_imbalance_input(test_data))
+  targeted_group_demo <- targeted_group_demographic(targeted, scenario_imbalance_input(test_data))
 
   data.frame(
     method = method_result$method,
     efficiency = relative_efficiency(targeted, test_data$Y, test_data$W),
     raw_imbalance = raw_imbalance,
     imbalance = if (cf_fd_imbalance == 0) NA_real_ else 100 * raw_imbalance / cf_fd_imbalance,
+    targeted_group_demo = targeted_group_demo,
     delta_policy = delta_policy_metric(targeted, targeted_twin),
     stringsAsFactors = FALSE
   )

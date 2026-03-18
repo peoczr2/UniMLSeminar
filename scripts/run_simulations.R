@@ -70,7 +70,7 @@ for (scenario_name in names(scenario_runners)) {
 
 results_df <- do.call(rbind, all_results)
 summary_df <- aggregate(
-  cbind(efficiency, raw_imbalance, imbalance, delta_policy) ~ scenario + method,
+  cbind(efficiency, raw_imbalance, imbalance, targeted_group_demo, delta_policy) ~ scenario + method,
   data = results_df,
   FUN = function(x) mean(x, na.rm = TRUE)
 )

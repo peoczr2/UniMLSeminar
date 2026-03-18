@@ -37,23 +37,50 @@ install_if_missing <- function(packages) {
   }
 }
 
+package_version_in_paths <- function(package) {
+  for (lib_path in .libPaths()) {
+    if (requireNamespace(package, quietly = TRUE, lib.loc = lib_path)) {
+      return(as.character(utils::packageVersion(package, lib.loc = lib_path)))
+    }
+  }
+
+  NULL
+}
+
+install_pinned_if_needed <- function(package, version) {
+  installed_version <- package_version_in_paths(package)
+
+  if (!is.null(installed_version) && identical(installed_version, version)) {
+    message(
+      "Using existing ", package, " ", version,
+      " from local library path."
+    )
+    return(invisible(FALSE))
+  }
+
+  if (!is.null(installed_version)) {
+    message(
+      package, " ", installed_version,
+      " is installed, but BEAT requires ", version,
+      ". Reinstalling pinned version."
+    )
+  }
+
+  remotes::install_version(
+    package,
+    version = version,
+    upgrade = "never",
+    dependencies = FALSE,
+    lib = lib_dir
+  )
+
+  invisible(TRUE)
+}
+
 install_if_missing(c("remotes"))
 
-remotes::install_version(
-  "RcppEigen",
-  version = "0.3.3.7.0",
-  upgrade = "never",
-  dependencies = FALSE,
-  lib = lib_dir
-)
-
-remotes::install_version(
-  "RcppArmadillo",
-  version = "0.11.4.0.1",
-  upgrade = "never",
-  dependencies = FALSE,
-  lib = lib_dir
-)
+install_pinned_if_needed("RcppEigen", "0.3.3.7.0")
+install_pinned_if_needed("RcppArmadillo", "0.11.4.0.1")
 
 install_if_missing(c(
   "data.table",

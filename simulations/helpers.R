@@ -59,6 +59,7 @@ load_simulation_runtime <- function(repo_root) {
   source(file.path(repo_root, "simulations", "method_cf_np.R"))
   source(file.path(repo_root, "simulations", "method_debiased.R"))
   source(file.path(repo_root, "simulations", "method_beat.R"))
+  source(file.path(repo_root, "simulations", "method_btgq.R"))
 }
 
 default_scenario_config <- function(repo_root, scenario_name) {
@@ -197,5 +198,42 @@ plot_method_scores <- function(scores_df, output_path, title_text) {
     ggplot2::theme_minimal()
 
   ggplot2::ggsave(output_path, plot_obj, width = 12, height = 8, dpi = 150)
+  invisible(plot_obj)
+}
+
+plot_btgq_lambda_trace <- function(lambda_trace, output_path, title_text, target_quota = 0.5) {
+  if (is.null(lambda_trace) || nrow(lambda_trace) == 0) {
+    return(invisible(NULL))
+  }
+
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    warning("ggplot2 is not installed; skipping plot generation.", call. = FALSE)
+    return(invisible(NULL))
+  }
+
+  plot_data <- transform(lambda_trace, lambda_plot = sign(lambda) * log10(abs(lambda) + 1))
+
+  plot_obj <- ggplot2::ggplot(
+    plot_data,
+    ggplot2::aes(x = lambda_plot, y = targeted_group_demo, group = 1)
+  ) +
+    ggplot2::geom_point(color = "#1b6ca8", size = 2) +
+    ggplot2::geom_hline(
+      yintercept = target_quota,
+      linetype = "dashed",
+      color = "#c1121f"
+    ) +
+    ggplot2::labs(
+      title = title_text,
+      x = "signed log10(|lambda| + 1)",
+      y = "Targeted Group Demo"
+    ) +
+    ggplot2::theme_minimal()
+
+  if (nrow(lambda_trace) >= 2) {
+    plot_obj <- plot_obj + ggplot2::geom_line(color = "#1b6ca8")
+  }
+
+  ggplot2::ggsave(output_path, plot_obj, width = 8, height = 5, dpi = 150)
   invisible(plot_obj)
 }

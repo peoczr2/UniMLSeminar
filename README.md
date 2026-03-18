@@ -10,6 +10,7 @@ The paper PDF and appendix are stored in the repository root. The research propo
 
 - `vendor/beat/`: a vendored copy of the original BEAT R package source imported from `ayeletis/beat`
 - `scripts/setup_beat.R`: installs BEAT from the vendored source into a local project library
+- `scripts/reinstall_beat.R`: reinstalls only the vendored BEAT package against the existing local project library
 - `scripts/run_beat_smoke_test.R`: runs a small balanced causal forest example to verify the package loads and trains
 - `scripts/run_simulations.R`: runs the reusable simulation framework for comparing paper-style scenarios and methods
 - `simulations/`: flat simulation files with one file per method and one file per scenario
@@ -30,7 +31,19 @@ The upstream BEAT README states that the package only works with `R 4.2.3` or ea
 Rscript scripts/setup_beat.R
 ```
 
-This installs BEAT and its pinned dependencies into a project-local library at `.r-library/`.
+This installs BEAT into a project-local library at `.r-library/`. The setup script now reuses already-installed local packages when the required pinned versions are present and only reaches CRAN when something is missing or the pinned version is not available locally.
+
+### Setup troubleshooting
+
+If `scripts/setup_beat.R` fails even though the project worked before, first check whether `.r-library/` already contains the required packages. The setup script prefers those local installs, but it still needs CRAN access when a dependency is missing or when the installed version does not match the pinned version required by BEAT, especially for `RcppEigen` and `RcppArmadillo`.
+
+If you only changed BEAT code and the local library is otherwise intact, reinstall the vendored BEAT package directly against the existing local library instead of rebundling dependencies:
+
+```powershell
+Rscript scripts/reinstall_beat.R
+```
+
+On Windows, restricted shells can still block the `R CMD build` step used by `install_local`. If that happens, rerun the same command from a normal local PowerShell session with sufficient permissions.
 
 ## Run a smoke test
 
@@ -85,10 +98,10 @@ For future research extensions, modify the vendored source directly:
 After changing BEAT internals, rerun:
 
 ```powershell
-Rscript scripts/setup_beat.R
+Rscript scripts/reinstall_beat.R
 ```
 
-That reinstalls the local package from your modified source tree.
+Use `scripts/setup_beat.R` only when you need to bootstrap or repair the local library itself. For normal BEAT development, `scripts/reinstall_beat.R` reinstalls the local package from your modified source tree without touching unrelated dependencies.
 
 ## Research direction
 

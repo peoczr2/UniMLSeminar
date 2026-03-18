@@ -8,7 +8,7 @@
 #' @param W The treatment assignment.
 #' @param target.group Binary indicator for the favored group. Must be a numeric or
 #'   logical vector of length `nrow(X)` with values in `{0, 1}`.
-#' @param btgq.lambda Non-negative reward weight used by the BTGQ split rule.
+#' @param btgq.lambda Reward weight used by the BTGQ split rule.
 #' @param Y.hat Optional outcome nuisance estimates. If NULL they are estimated.
 #' @param W.hat Optional treatment nuisance estimates. If NULL they are estimated.
 #' @inheritParams balanced_causal_forest
@@ -48,7 +48,7 @@ btgq_causal_forest <- function(X,
   Y <- validate_observations(Y, X)
   W <- validate_observations(W, X)
   target.group <- validate_btgq_target_group(target.group, X)
-  stopifnot(is.numeric(btgq.lambda), length(btgq.lambda) == 1, btgq.lambda >= 0)
+  stopifnot(is.numeric(btgq.lambda), length(btgq.lambda) == 1)
 
   clusters <- validate_clusters(clusters, X)
   samples.per.cluster <- validate_equalize_cluster_weights(equalize.cluster.weights, clusters, sample.weights)
@@ -145,6 +145,10 @@ btgq_causal_forest <- function(X,
 #'
 #' @param budget Budget fraction used for the top-k policy evaluation.
 #' @param target.quota Desired share of the target group within the budgeted slice.
+#' @param validation.X Optional data set used to evaluate the quota during the
+#'   search. If NULL, the training set is used as before.
+#' @param validation.target.group Optional target-group indicator for
+#'   `validation.X`. Required when `validation.X` is supplied.
 #' @param lambda.lower Lower bound for the BTGQ lambda search.
 #' @param lambda.upper Optional upper bound for the BTGQ lambda search. If NULL, it
 #'   is expanded automatically by doubling.
@@ -160,6 +164,8 @@ tune_btgq_causal_forest <- function(X,
                                     target.group,
                                     budget,
                                     target.quota,
+                                    validation.X = NULL,
+                                    validation.target.group = NULL,
                                     lambda.lower = 0,
                                     lambda.upper = NULL,
                                     quota.tol = 0.01,
@@ -185,6 +191,14 @@ tune_btgq_causal_forest <- function(X,
                                     seed = runif(1, 0, .Machine$integer.max)) {
   validate_btgq_budget_quota(budget, target.quota, quota.tol, max.search.iter)
   target.group <- validate_btgq_target_group(target.group, X)
+
+  if (is.null(validation.X)) {
+    validation.X <- X
+    validation.target.group <- target.group
+  } else {
+    validate_X(validation.X, allow.na = TRUE)
+    validation.target.group <- validate_btgq_target_group(validation.target.group, validation.X)
+  }
 
   fit_once <- function(lambda, Y.hat.arg, W.hat.arg) {
     btgq_causal_forest(
@@ -220,16 +234,18 @@ tune_btgq_causal_forest <- function(X,
     lambda = numeric(0),
     achieved.quota = numeric(0),
     quota.gap = numeric(0),
+    phase = character(0),
     stringsAsFactors = FALSE
   )
   fitted.models <- list()
 
   evaluate_fit <- function(forest) {
-    stats <- btgq_policy_stats(predict(forest)$predictions, forest$target.group, budget)
+    validation.predictions <- predict(forest, validation.X)$predictions
+    stats <- btgq_policy_stats(validation.predictions, validation.target.group, budget)
     list(quota = stats$quota, stats = stats)
   }
 
-  record_fit <- function(forest) {
+  record_fit <- function(forest, phase) {
     eval <- evaluate_fit(forest)
     key <- formatC(forest$btgq.lambda, digits = 17, format = "fg", flag = "#")
     fitted.models[[key]] <<- list(forest = forest, quota = eval$quota, stats = eval$stats)
@@ -239,6 +255,7 @@ tune_btgq_causal_forest <- function(X,
         lambda = forest$btgq.lambda,
         achieved.quota = eval$quota,
         quota.gap = eval$quota - target.quota,
+        phase = phase,
         stringsAsFactors = FALSE
       )
     )
@@ -246,80 +263,65 @@ tune_btgq_causal_forest <- function(X,
   }
 
   baseline <- fit_once(lambda.lower, Y.hat, W.hat)
-  baseline.eval <- record_fit(baseline)
+  baseline.eval <- record_fit(baseline, "baseline")
   nuisance.Y.hat <- baseline$Y.hat
   nuisance.W.hat <- baseline$W.hat
 
-  if (baseline.eval$quota >= target.quota - quota.tol) {
-    return(list(
-      forest = baseline,
-      selected.lambda = baseline$btgq.lambda,
-      achieved.quota = baseline.eval$quota,
-      target.quota = target.quota,
-      budget = budget,
-      quota.attained = TRUE,
-      search.trace = search.trace
-    ))
+  lambda_key <- function(lambda) {
+    formatC(lambda, digits = 17, format = "fg", flag = "#")
   }
 
-  if (is.null(lambda.upper)) {
-    lambda.upper <- if (lambda.lower > 0) lambda.lower else 1
+  seen_lambda <- function(lambda) {
+    lambda_key(lambda) %in% names(fitted.models)
   }
 
-  upper.fit <- NULL
-  upper.eval <- NULL
-  for (iter in seq_len(max.search.iter)) {
-    upper.fit <- fit_once(lambda.upper, nuisance.Y.hat, nuisance.W.hat)
-    upper.eval <- record_fit(upper.fit)
-    if (upper.eval$quota >= target.quota) {
-      break
+  evaluate_lambda <- function(lambda, phase) {
+    if (seen_lambda(lambda)) {
+      return(invisible(NULL))
     }
-    lambda.lower <- lambda.upper
-    lambda.upper <- lambda.upper * 2
+    fit <- fit_once(lambda, nuisance.Y.hat, nuisance.W.hat)
+    record_fit(fit, phase)
   }
 
-  if (is.null(upper.eval) || upper.eval$quota < target.quota) {
-    best <- btgq_best_search_result(fitted.models, target.quota)
-    return(list(
-      forest = best$forest,
-      selected.lambda = best$forest$btgq.lambda,
-      achieved.quota = best$quota,
-      target.quota = target.quota,
-      budget = budget,
-      quota.attained = FALSE,
-      search.trace = search.trace
-    ))
+  coarse_magnitudes <- as.vector(outer(c(0.1, 0.3, 1, 3), 10^(0:max.search.iter)))
+  coarse_lambdas <- unique(c(0, sort(c(-coarse_magnitudes, coarse_magnitudes))))
+  if (!is.null(lambda.upper)) {
+    coarse_lambdas <- coarse_lambdas[coarse_lambdas <= lambda.upper]
+  }
+  if (lambda.lower != 0) {
+    coarse_lambdas <- unique(c(lambda.lower, coarse_lambdas))
   }
 
-  lower.lambda <- baseline$btgq.lambda
-  lower.quota <- baseline.eval$quota
-  if (lambda.lower > lower.lambda) {
-    lower.lambda <- lambda.lower
-    lower.key <- formatC(lower.lambda, digits = 17, format = "fg", flag = "#")
-    lower.quota <- fitted.models[[lower.key]]$quota
+  for (lambda in coarse_lambdas) {
+    evaluate_lambda(lambda, "coarse")
   }
 
-  for (iter in seq_len(max.search.iter)) {
-    mid.lambda <- (lower.lambda + lambda.upper) / 2
-    mid.fit <- fit_once(mid.lambda, nuisance.Y.hat, nuisance.W.hat)
-    mid.eval <- record_fit(mid.fit)
-    if (abs(mid.eval$quota - target.quota) <= quota.tol) {
-      best <- btgq_best_search_result(fitted.models, target.quota)
-      return(list(
-        forest = best$forest,
-        selected.lambda = best$forest$btgq.lambda,
-        achieved.quota = best$quota,
-        target.quota = target.quota,
-        budget = budget,
-        quota.attained = TRUE,
-        search.trace = search.trace
-      ))
-    }
-    if (mid.eval$quota < target.quota) {
-      lower.lambda <- mid.lambda
-      lower.quota <- mid.eval$quota
+  coarse.trace <- search.trace[search.trace$phase == "coarse", , drop = FALSE]
+  if (nrow(coarse.trace) == 0) {
+    evaluate_lambda(lambda.lower, "coarse")
+    coarse.trace <- search.trace[search.trace$phase == "coarse", , drop = FALSE]
+  }
+
+  refine.centers <- coarse.trace$lambda[order(abs(coarse.trace$quota.gap), coarse.trace$lambda)]
+  refine.centers <- unique(refine.centers[seq_len(min(3L, length(refine.centers)))])
+
+  make_refine_grid <- function(center) {
+    if (center == 0) {
+      grid <- c(0, -0.01, -0.03, -0.1, -0.3, -1, 0.01, 0.03, 0.1, 0.3, 1)
     } else {
-      lambda.upper <- mid.lambda
+      grid <- center * c(0.25, 0.5, 0.75, 0.85, 1, 1.15, 1.3, 1.5, 2)
+    }
+    grid <- unique(grid)
+    if (!is.null(lambda.upper)) {
+      grid <- grid[grid <= lambda.upper]
+    }
+    grid
+  }
+
+  for (center in refine.centers) {
+    refine.grid <- make_refine_grid(center)
+    for (lambda in refine.grid) {
+      evaluate_lambda(lambda, "refine")
     }
   }
 
