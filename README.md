@@ -13,6 +13,7 @@ The paper PDF and appendix are stored in the repository root. The research propo
 - `scripts/run_beat_smoke_test.R`: runs a small balanced causal forest example to verify the package loads and trains
 - `scripts/run_simulations.R`: runs the reusable simulation framework for comparing paper-style scenarios and methods
 - `simulations/`: flat simulation files with one file per method and one file per scenario
+- `scripts/run_btgq_smoke_test.R`: runs a small BTGQ causal forest example and tunes `lambda` to a quota target
 - `main.tex`: project proposal and extension ideas
 
 Vendoring the package instead of linking to it as a submodule means future changes to BEAT are tracked directly in this repository. That is the safer setup for a research codebase where you expect to modify the upstream implementation.
@@ -63,6 +64,16 @@ You can also run a single scenario directly, for example:
 ```powershell
 Rscript simulations/scenario_1_high_corr_tau_z.R
 ```
+
+## Run the BTGQ smoke test
+
+To exercise the BTGQ extension, run:
+
+```powershell
+Rscript scripts/run_btgq_smoke_test.R
+```
+
+This trains a baseline `btgq_causal_forest`, tunes `lambda` with `tune_btgq_causal_forest`, and prints the achieved quota trace.
 
 ## Where to modify BEAT
 
