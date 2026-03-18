@@ -1,0 +1,17 @@
+"scenario","method","efficiency","raw_imbalance","imbalance","delta_policy"
+"scenario_1_high_corr_tau_z","BEAT",45.3667912792008,0.211838549388994,59.5412186535133,0
+"scenario_2_low_corr_tau_z","BEAT",68.1916604950548,0.147850287573533,93.2406761813009,0
+"scenario_3_low_corr_tau_z_x2_same_sign","BEAT",13.258593729123,0.289943957195403,64.1661091362337,0
+"scenario_4_low_corr_tau_z_x2_opposite_sign","BEAT",31.7672052231719,0.259167156512334,84.6640663393352,0
+"scenario_1_high_corr_tau_z","CF-FD",86.350016768293,0.355784705418511,100,19
+"scenario_2_low_corr_tau_z","CF-FD",89.4212635099727,0.158568442045666,100,11
+"scenario_3_low_corr_tau_z_x2_same_sign","CF-FD",77.902487912804,0.451864638667448,100,16
+"scenario_4_low_corr_tau_z_x2_opposite_sign","CF-FD",78.9466851091945,0.30611234224634,100,2
+"scenario_1_high_corr_tau_z","CF-NP",103.53674144653,0.324004630409886,91.067610685726,0
+"scenario_2_low_corr_tau_z","CF-NP",34.6954271089799,0.135659880241916,85.5528871267133,0
+"scenario_3_low_corr_tau_z_x2_same_sign","CF-NP",68.0529550721604,0.325465448201021,72.0272002608614,0
+"scenario_4_low_corr_tau_z_x2_opposite_sign","CF-NP",58.0760839795155,0.270029963554871,88.2127004658858,0
+"scenario_1_high_corr_tau_z","Debiased",73.9972632393381,0.263438308658832,74.0443039418879,16
+"scenario_2_low_corr_tau_z","Debiased",93.2703200489615,0.142145645015689,89.6430860907073,9
+"scenario_3_low_corr_tau_z_x2_same_sign","Debiased",88.757726481815,0.312766079347028,69.2167637346834,19
+"scenario_4_low_corr_tau_z_x2_opposite_sign","Debiased",82.2143813340628,0.146823816895856,47.9640304008722,29

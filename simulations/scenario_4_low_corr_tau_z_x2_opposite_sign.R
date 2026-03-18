@@ -59,7 +59,7 @@ run_scenario_4_low_corr_tau_z_x2_opposite_sign <- function(repo_root, output_dir
   )
 
   cf_fd_targeted <- target_top_share(method_results[[1]]$score, target_share)
-  cf_fd_imbalance <- imbalance_metric(cf_fd_targeted, sim_data$test$Z)
+  cf_fd_imbalance <- imbalance_metric(cf_fd_targeted, scenario_imbalance_input(sim_data$test))
 
   metrics_df <- do.call(
     rbind,
