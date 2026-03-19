@@ -60,6 +60,7 @@ load_simulation_runtime <- function(repo_root) {
   source(file.path(repo_root, "simulations", "method_debiased.R"))
   source(file.path(repo_root, "simulations", "method_beat.R"))
   source(file.path(repo_root, "simulations", "method_btgq.R"))
+  source(file.path(repo_root, "simulations", "method_btgq_dumb.R"))
 }
 
 default_scenario_config <- function(repo_root, scenario_name) {

@@ -36,6 +36,7 @@
 #include "splitting/factory/CausalSurvivalSplittingRuleFactory.h"
 #include "splitting/factory/BalancedInstrumentalSplittingRuleFactory.h"
 #include "splitting/factory/BTGQInstrumentalSplittingRuleFactory.h"
+#include "splitting/factory/BTGQDumbInstrumentalSplittingRuleFactory.h"
 #include "splitting/factory/BalancedRegressionSplittingRuleFactory.h"
 #include "splitting/factory/BalancedProbabilitySplittingRuleFactory.h"
 
@@ -60,6 +61,20 @@ ForestTrainer btgq_instrumental_trainer(double reduced_form_weight,
   std::unique_ptr<RelabelingStrategy> relabeling_strategy(new InstrumentalRelabelingStrategy(reduced_form_weight));
   std::unique_ptr<SplittingRuleFactory> splitting_rule_factory = stabilize_splits
           ? std::unique_ptr<SplittingRuleFactory>(new BTGQInstrumentalSplittingRuleFactory())
+          : std::unique_ptr<SplittingRuleFactory>(new RegressionSplittingRuleFactory());
+  std::unique_ptr<OptimizedPredictionStrategy> prediction_strategy(new InstrumentalPredictionStrategy());
+
+  return ForestTrainer(std::move(relabeling_strategy),
+                       std::move(splitting_rule_factory),
+                       std::move(prediction_strategy));
+}
+
+ForestTrainer btgq_dumb_instrumental_trainer(double reduced_form_weight,
+                                             bool stabilize_splits) {
+
+  std::unique_ptr<RelabelingStrategy> relabeling_strategy(new InstrumentalRelabelingStrategy(reduced_form_weight));
+  std::unique_ptr<SplittingRuleFactory> splitting_rule_factory = stabilize_splits
+          ? std::unique_ptr<SplittingRuleFactory>(new BTGQDumbInstrumentalSplittingRuleFactory())
           : std::unique_ptr<SplittingRuleFactory>(new RegressionSplittingRuleFactory());
   std::unique_ptr<OptimizedPredictionStrategy> prediction_strategy(new InstrumentalPredictionStrategy());
 

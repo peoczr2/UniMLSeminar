@@ -59,6 +59,40 @@ targeted_group_demographic <- function(targeted, z_matrix) {
   mean(z_matrix[targeted_idx, 1L])
 }
 
+## Maximum viable ceiling:
+## calculates the absolute maximum representation each group can achieve
+## inside a fixed budget, without treating negative-CATE units.
+maximum_viable_ceiling <- function(test_data, budget_fraction = 0.50) {
+  viable_idx <- test_data$tau > 0
+
+  if (!any(viable_idx)) {
+    return(c(Z1_0 = NA_real_, Z1_1 = NA_real_))
+  }
+
+  total_population <- length(test_data$tau)
+  budget_size <- floor(total_population * budget_fraction)
+
+  if (budget_size <= 0) {
+    return(c(Z1_0 = NA_real_, Z1_1 = NA_real_))
+  }
+
+  viable_group_0_count <- sum(test_data$Z[viable_idx, "Z1"] == 0, na.rm = TRUE)
+  viable_group_1_count <- sum(test_data$Z[viable_idx, "Z1"] == 1, na.rm = TRUE)
+
+  c(
+    Z1_0 = min(1.0, viable_group_0_count / budget_size),
+    Z1_1 = min(1.0, viable_group_1_count / budget_size)
+  )
+}
+
+extract_ceiling_value <- function(ceiling_values, group_label) {
+  value <- ceiling_values[[group_label]]
+  if (is.null(value) || length(value) == 0) {
+    return(NA_real_)
+  }
+  as.numeric(value)
+}
+
 ## Scenario-specific protected-attribute input for imbalance:
 ## use `Z1` only to mirror the paper-style table comparisons.
 scenario_imbalance_input <- function(test_data) {
@@ -78,6 +112,7 @@ evaluate_method <- function(test_data, method_result, target_share, cf_fd_imbala
   targeted_twin <- target_top_share(method_result$twin_score, target_share)
   raw_imbalance <- imbalance_metric(targeted, scenario_imbalance_input(test_data))
   targeted_group_demo <- targeted_group_demographic(targeted, scenario_imbalance_input(test_data))
+  ceiling_values <- maximum_viable_ceiling(test_data, budget_fraction = target_share)
 
   data.frame(
     method = method_result$method,
@@ -85,6 +120,8 @@ evaluate_method <- function(test_data, method_result, target_share, cf_fd_imbala
     raw_imbalance = raw_imbalance,
     imbalance = if (cf_fd_imbalance == 0) NA_real_ else 100 * raw_imbalance / cf_fd_imbalance,
     targeted_group_demo = targeted_group_demo,
+    maximum_viable_ceiling_z0 = extract_ceiling_value(ceiling_values, "Z1_0"),
+    maximum_viable_ceiling_z1 = extract_ceiling_value(ceiling_values, "Z1_1"),
     delta_policy = delta_policy_metric(targeted, targeted_twin),
     stringsAsFactors = FALSE
   )

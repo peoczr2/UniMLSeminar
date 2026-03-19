@@ -77,7 +77,8 @@ run_scenario_4_low_corr_tau_z_x2_opposite_sign <- function(repo_root, output_dir
     fit_debiased(sim_data, num_trees, seed + 20),
     fit_beat(sim_data, num_trees, beat_penalty, seed + 30),
     fit_btgq(sim_data, num_trees, seed + 40, budget = 0.5, target_quota = 0.5, use_validation = FALSE, method_name = "BTGQ"),
-    fit_btgq(sim_data, num_trees, seed + 50, budget = 0.5, target_quota = 0.5, use_validation = TRUE, method_name = "BTGQ_VALID")
+    fit_btgq(sim_data, num_trees, seed + 50, budget = 0.5, target_quota = 0.5, use_validation = TRUE, method_name = "BTGQ_VALID"),
+    fit_btgq_dumb(sim_data, num_trees, seed + 60, budget = 0.5, target_quota = 0.5, use_validation = FALSE, method_name = "BTGQ_DUMB")
   )
 
   btgq_plot_path <- file.path(output_dir, sprintf("scenario_4_low_corr_tau_z_x2_opposite_sign_btgq_lambda_trace_seed_%s.png", seed))
@@ -93,6 +94,14 @@ run_scenario_4_low_corr_tau_z_x2_opposite_sign <- function(repo_root, output_dir
     method_results[[6]]$lambda_trace,
     btgq_valid_plot_path,
     "Scenario 4 BTGQ_VALID: Lambda vs Targeted Group Demo",
+    target_quota = 0.5
+  )
+
+  btgq_dumb_plot_path <- file.path(output_dir, sprintf("scenario_4_low_corr_tau_z_x2_opposite_sign_btgq_dumb_lambda_trace_seed_%s.png", seed))
+  plot_btgq_lambda_trace(
+    method_results[[7]]$lambda_trace,
+    btgq_dumb_plot_path,
+    "Scenario 4 BTGQ_DUMB: Lambda vs Targeted Group Demo",
     target_quota = 0.5
   )
 
