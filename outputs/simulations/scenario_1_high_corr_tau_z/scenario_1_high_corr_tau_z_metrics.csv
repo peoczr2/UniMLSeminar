@@ -1,0 +1,3 @@
+"method","efficiency","raw_imbalance","imbalance","targeted_group_demo","maximum_viable_ceiling_z0","maximum_viable_ceiling_z1","delta_policy","scenario"
+"CF-FD",51.6350108079437,0.2,100,0.2,0.1,0.4,0,"scenario_1_high_corr_tau_z"
+"BEAT",13.2635595221632,0.2,100,0.2,0.1,0.4,0,"scenario_1_high_corr_tau_z"

@@ -26,11 +26,14 @@ config <- parse_cli_args(list(
   num_trees = 500,
   target_share = 0.5,
   beat_penalty = 10,
+  methods = "all",
+  use_cache = TRUE,
   output_dir = file.path(repo_root, "outputs", "simulations")
 ))
 
 dir.create(config$output_dir, recursive = TRUE, showWarnings = FALSE)
 ensure_local_library(repo_root)
+selected_methods <- parse_method_selection(config$methods)
 
 suppressPackageStartupMessages(library(beat))
 
@@ -54,7 +57,9 @@ for (scenario_name in names(scenario_runners)) {
       num_trees = as.integer(config$num_trees),
       beat_penalty = config$beat_penalty,
       target_share = config$target_share,
-      seed = seed
+      seed = seed,
+      selected_methods = selected_methods,
+      use_cache = isTRUE(config$use_cache)
     )
     metrics_df <- result
     metrics_df$replication <- rep_id

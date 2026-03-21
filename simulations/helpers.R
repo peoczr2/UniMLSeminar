@@ -52,6 +52,132 @@ parse_cli_args <- function(defaults) {
   parsed
 }
 
+parse_method_selection <- function(methods) {
+  if (is.null(methods) || length(methods) == 0L) {
+    return(NULL)
+  }
+
+  methods <- trimws(as.character(methods))
+  methods <- methods[nzchar(methods)]
+  if (length(methods) == 0L || any(tolower(methods) == "all")) {
+    return(NULL)
+  }
+
+  unique(trimws(unlist(strsplit(paste(methods, collapse = ","), ",", fixed = TRUE), use.names = FALSE)))
+}
+
+sanitize_cache_component <- function(value) {
+  value <- as.character(value)
+  value <- gsub("[^A-Za-z0-9._-]+", "_", value)
+  gsub("^_|_$", "", value)
+}
+
+simulation_method_specs <- function() {
+  specs <- list(
+    "CF-FD" = function(sim_data, num_trees, beat_penalty, seed) {
+      fit_cf_fd(sim_data, num_trees, seed)
+    },
+    "CF-NP" = function(sim_data, num_trees, beat_penalty, seed) {
+      fit_cf_np(sim_data, num_trees, seed)
+    },
+    "Debiased" = function(sim_data, num_trees, beat_penalty, seed) {
+      fit_debiased(sim_data, num_trees, seed)
+    },
+    "BEAT" = function(sim_data, num_trees, beat_penalty, seed) {
+      fit_beat(sim_data, num_trees, beat_penalty, seed)
+    },
+    "BTGQ" = function(sim_data, num_trees, beat_penalty, seed) {
+      fit_btgq(sim_data, num_trees, seed, budget = 0.5, target_quota = 0.5, use_validation = FALSE, method_name = "BTGQ")
+    },
+    "BTGQ_VALID" = function(sim_data, num_trees, beat_penalty, seed) {
+      fit_btgq(sim_data, num_trees, seed + 50, budget = 0.5, target_quota = 0.5, use_validation = TRUE, method_name = "BTGQ_VALID")
+    },
+    "BTGQ_DUMB" = function(sim_data, num_trees, beat_penalty, seed) {
+      fit_btgq_dumb(sim_data, num_trees, seed + 60, budget = 0.5, target_quota = 0.5, use_validation = FALSE, method_name = "BTGQ_DUMB")
+    }
+  )
+
+  specs
+}
+
+method_cache_path <- function(cache_dir, cache_key, method_name) {
+  dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+  file.path(
+    cache_dir,
+    paste0(
+      sanitize_cache_component(cache_key),
+      "__",
+      sanitize_cache_component(method_name),
+      ".rds"
+    )
+  )
+}
+
+collect_method_results <- function(
+    sim_data,
+    num_trees,
+    beat_penalty,
+    seed,
+    cache_dir,
+    cache_key,
+    selected_methods = NULL,
+    use_cache = TRUE) {
+  specs <- simulation_method_specs()
+  method_names <- names(specs)
+
+  if (!is.null(selected_methods)) {
+    unknown_methods <- setdiff(selected_methods, method_names)
+    if (length(unknown_methods) > 0L) {
+      stop(
+        paste("Unknown method(s):", paste(unknown_methods, collapse = ", ")),
+        call. = FALSE
+      )
+    }
+    method_names <- unique(c("CF-FD", selected_methods))
+  }
+
+  method_results <- vector("list", length(method_names))
+
+  for (i in seq_along(method_names)) {
+    method_name <- method_names[[i]]
+    cache_path <- method_cache_path(cache_dir, cache_key, method_name)
+
+    if (use_cache && file.exists(cache_path)) {
+      method_results[[i]] <- readRDS(cache_path)
+      next
+    }
+
+    method_result <- specs[[method_name]](sim_data, num_trees, beat_penalty, seed)
+    method_results[[i]] <- method_result
+    if (use_cache) {
+      saveRDS(method_result, cache_path)
+    }
+  }
+
+  method_results
+}
+
+get_method_result <- function(method_results, method_name) {
+  if (is.null(method_results) || length(method_results) == 0L) {
+    return(NULL)
+  }
+
+  method_names <- vapply(method_results, function(x) x$method, character(1L))
+  idx <- match(method_name, method_names)
+  if (is.na(idx)) {
+    return(NULL)
+  }
+  method_results[[idx]]
+}
+
+scenario_plot_dir <- function(output_dir, scenario_name) {
+  output_dir <- normalizePath(output_dir, winslash = "/", mustWork = FALSE)
+  if (basename(output_dir) == scenario_name) {
+    return(output_dir)
+  }
+  file.path(output_dir, scenario_name)
+}
+
 load_simulation_runtime <- function(repo_root) {
   source(file.path(repo_root, "simulations", "helpers.R"))
   source(file.path(repo_root, "simulations", "metrics.R"))
@@ -71,6 +197,8 @@ default_scenario_config <- function(repo_root, scenario_name) {
     target_share = 0.5,
     beat_penalty = 10,
     seed = 123,
+    methods = "all",
+    use_cache = TRUE,
     output_dir = file.path(repo_root, "outputs", "simulations", scenario_name)
   ))
 }
@@ -91,6 +219,7 @@ run_scenario_script <- function(run_fun, scenario_name) {
 
   config <- default_scenario_config(repo_root, scenario_name)
   dir.create(config$output_dir, recursive = TRUE, showWarnings = FALSE)
+  selected_methods <- parse_method_selection(config$methods)
 
   metrics_df <- run_fun(
     repo_root = repo_root,
@@ -100,7 +229,9 @@ run_scenario_script <- function(run_fun, scenario_name) {
     num_trees = as.integer(config$num_trees),
     beat_penalty = config$beat_penalty,
     target_share = config$target_share,
-    seed = as.integer(config$seed)
+    seed = as.integer(config$seed),
+    selected_methods = selected_methods,
+    use_cache = isTRUE(config$use_cache)
   )
 
   output_path <- file.path(config$output_dir, paste0(scenario_name, "_metrics.csv"))

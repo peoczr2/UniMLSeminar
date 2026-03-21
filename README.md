@@ -72,6 +72,23 @@ The default run executes the four BEAT-paper-style scenarios and compares:
 
 Outputs are written to `outputs/simulations/`. Add or modify scenarios directly in the `simulations/scenario_*.R` files.
 
+The simulation runner now caches fitted method results under each scenario directory in `_cache/`, and writes plots into per-scenario subfolders. That means you can rerun only the methods you changed, or rerun the full pipeline to rebuild the summary while reusing cached fits, without filling the root output folder with plot files.
+
+Useful flags:
+
+- `--methods=BEAT,CF-FD` reruns only the listed methods plus the `CF-FD` baseline that is kept as the imbalance reference
+- `--use-cache=true` reuses saved method results when the same scenario, seed, tree count, and penalty are requested again
+- `--use-cache=false` forces fresh refits for the selected methods
+
+Example:
+
+```powershell
+Rscript scripts/run_simulations.R --reps=3 --methods=BEAT --num_trees=250
+```
+
+If you add a new metric, rerun the same command and the script will rebuild `simulation_results.csv` and `simulation_summary.csv` from the cached method outputs.
+
+
 You can also run a single scenario directly, for example:
 
 ```powershell
