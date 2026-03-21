@@ -60,14 +60,14 @@ load_simulation_runtime <- function(repo_root) {
   source(file.path(repo_root, "simulations", "method_debiased.R"))
   source(file.path(repo_root, "simulations", "method_beat.R"))
   source(file.path(repo_root, "simulations", "method_btgq.R"))
-  source(file.path(repo_root, "simulations", "method_btgq_dumb.R"))
+  source(file.path(repo_root, "simulations", "method_btgq_max.R"))
 }
 
 default_scenario_config <- function(repo_root, scenario_name) {
   parse_cli_args(list(
     n_train = 2000,
     n_test = 1000,
-    num_trees = 500,
+    num_trees = 250,
     target_share = 0.5,
     beat_penalty = 10,
     seed = 123,
@@ -202,37 +202,107 @@ plot_method_scores <- function(scores_df, output_path, title_text) {
   invisible(plot_obj)
 }
 
-plot_btgq_lambda_trace <- function(lambda_trace, output_path, title_text, target_quota = 0.5) {
+plot_btgq_lambda_trace <- function(lambda_trace, output_path, title_text, target_quota = 0.5, color_by = NULL, color_label = NULL) {
   if (is.null(lambda_trace) || nrow(lambda_trace) == 0) {
     return(invisible(NULL))
   }
 
-  if (!requireNamespace("ggplot2", quietly = TRUE)) {
-    warning("ggplot2 is not installed; skipping plot generation.", call. = FALSE)
-    return(invisible(NULL))
+  plot_data <- transform(lambda_trace, lambda_plot = sign(lambda) * log10(abs(lambda) + 1))
+  use_color_scale <- !is.null(color_by) && color_by %in% names(plot_data)
+  if (use_color_scale) {
+    plot_data$color_metric <- plot_data[[color_by]]
+    if (is.null(color_label) || !nzchar(color_label)) {
+      color_label <- color_by
+    }
   }
 
-  plot_data <- transform(lambda_trace, lambda_plot = sign(lambda) * log10(abs(lambda) + 1))
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    png(filename = output_path, width = 8, height = 5, units = "in", res = 150)
+    on.exit(grDevices::dev.off(), add = TRUE)
+
+    point_col <- "#1b6ca8"
+    if (use_color_scale) {
+      palette <- grDevices::colorRampPalette(c("#1b6ca8", "#c1121f"))(100)
+      color_bins <- cut(
+        plot_data$color_metric,
+        breaks = 100,
+        include.lowest = TRUE,
+        labels = FALSE
+      )
+      point_col <- palette[color_bins]
+    }
+
+    graphics::plot(
+      plot_data$lambda_plot,
+      plot_data$targeted_group_demo,
+      type = "n",
+      xlab = "signed log10(|lambda| + 1)",
+      ylab = "Targeted Group Demo",
+      main = title_text
+    )
+    graphics::abline(h = target_quota, lty = 2, col = "#c1121f")
+    graphics::points(plot_data$lambda_plot, plot_data$targeted_group_demo, col = point_col, pch = 16)
+    if (nrow(plot_data) >= 2) {
+      graphics::lines(plot_data$lambda_plot, plot_data$targeted_group_demo, col = if (use_color_scale) "grey45" else "#1b6ca8")
+    }
+    if (use_color_scale) {
+      graphics::legend(
+        "topright",
+        legend = c(
+          sprintf("%s low", color_label),
+          sprintf("%s high", color_label)
+        ),
+        col = c("#1b6ca8", "#c1121f"),
+        pch = 16,
+        bty = "n"
+      )
+    }
+
+    return(invisible(NULL))
+  }
 
   plot_obj <- ggplot2::ggplot(
     plot_data,
     ggplot2::aes(x = lambda_plot, y = targeted_group_demo, group = 1)
-  ) +
-    ggplot2::geom_point(color = "#1b6ca8", size = 2) +
-    ggplot2::geom_hline(
-      yintercept = target_quota,
-      linetype = "dashed",
-      color = "#c1121f"
-    ) +
-    ggplot2::labs(
-      title = title_text,
-      x = "signed log10(|lambda| + 1)",
-      y = "Targeted Group Demo"
-    ) +
-    ggplot2::theme_minimal()
+  )
+
+  if (use_color_scale) {
+    plot_obj <- plot_obj +
+      ggplot2::geom_point(ggplot2::aes(color = color_metric), size = 2) +
+      ggplot2::geom_hline(
+        yintercept = target_quota,
+        linetype = "dashed",
+        color = "#c1121f"
+      ) +
+      ggplot2::labs(
+        title = title_text,
+        x = "signed log10(|lambda| + 1)",
+        y = "Targeted Group Demo"
+      ) +
+      ggplot2::theme_minimal() +
+      ggplot2::scale_color_gradient(
+        low = "#1b6ca8",
+        high = "#c1121f",
+        name = color_label
+      )
+  } else {
+    plot_obj <- plot_obj +
+      ggplot2::geom_point(color = "#1b6ca8", size = 2) +
+      ggplot2::geom_hline(
+        yintercept = target_quota,
+        linetype = "dashed",
+        color = "#c1121f"
+      ) +
+      ggplot2::labs(
+        title = title_text,
+        x = "signed log10(|lambda| + 1)",
+        y = "Targeted Group Demo"
+      ) +
+      ggplot2::theme_minimal()
+  }
 
   if (nrow(lambda_trace) >= 2) {
-    plot_obj <- plot_obj + ggplot2::geom_line(color = "#1b6ca8")
+    plot_obj <- plot_obj + ggplot2::geom_line(color = if (use_color_scale) "grey45" else "#1b6ca8")
   }
 
   ggplot2::ggsave(output_path, plot_obj, width = 8, height = 5, dpi = 150)

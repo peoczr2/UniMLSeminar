@@ -10,6 +10,8 @@ This folder contains a flat simulation layout for the BEAT comparisons.
 - `method_cf_np.R`
 - `method_debiased.R`
 - `method_beat.R`
+- `method_btgq.R`
+- `method_btgq_max.R`
 - `scenario_1_high_corr_tau_z.R`
 - `scenario_2_low_corr_tau_z.R`
 - `scenario_3_low_corr_tau_z_x2_same_sign.R`

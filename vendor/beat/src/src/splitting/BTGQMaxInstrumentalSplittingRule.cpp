@@ -18,7 +18,7 @@
 #include <algorithm>
 #include <cmath>
 
-#include "BTGQInstrumentalSplittingRule.h"
+#include "BTGQMaxInstrumentalSplittingRule.h"
 
 namespace grf {
 
@@ -93,6 +93,10 @@ double compute_btgq_uplift(double weight_sum_left,
   }
 
   double tau_target = choose_left ? tau_left : tau_right;
+  if (tau_target <= 0.0) {
+    return 0.0;
+  }
+
   double weight_sum_target = choose_left ? weight_sum_left : weight_sum_right;
   double target_group_sum = choose_left ? target_group_sum_left : target_group_sum_right;
   double concentration = target_group_sum / weight_sum_target;
@@ -102,10 +106,10 @@ double compute_btgq_uplift(double weight_sum_left,
 
 } // namespace
 
-BTGQInstrumentalSplittingRule::BTGQInstrumentalSplittingRule(size_t max_num_unique_values,
-                                                             uint min_node_size,
-                                                             double alpha,
-                                                             double imbalance_penalty):
+BTGQMaxInstrumentalSplittingRule::BTGQMaxInstrumentalSplittingRule(size_t max_num_unique_values,
+                                                                   uint min_node_size,
+                                                                   double alpha,
+                                                                   double imbalance_penalty):
     min_node_size(min_node_size),
     alpha(alpha),
     imbalance_penalty(imbalance_penalty) {
@@ -122,7 +126,7 @@ BTGQInstrumentalSplittingRule::BTGQInstrumentalSplittingRule(size_t max_num_uniq
   this->target_group_sums = new double[max_num_unique_values];
 }
 
-BTGQInstrumentalSplittingRule::~BTGQInstrumentalSplittingRule() {
+BTGQMaxInstrumentalSplittingRule::~BTGQMaxInstrumentalSplittingRule() {
   if (counter != nullptr) {
     delete[] counter;
   }
@@ -158,14 +162,14 @@ BTGQInstrumentalSplittingRule::~BTGQInstrumentalSplittingRule() {
   }
 }
 
-bool BTGQInstrumentalSplittingRule::find_best_split(const Data& data,
-                                                    size_t node,
-                                                    const std::vector<size_t>& possible_split_vars,
-                                                    const Eigen::ArrayXXd& responses_by_sample,
-                                                    const std::vector<std::vector<size_t>>& samples,
-                                                    std::vector<size_t>& split_vars,
-                                                    std::vector<double>& split_values,
-                                                    std::vector<bool>& send_missing_left) {
+bool BTGQMaxInstrumentalSplittingRule::find_best_split(const Data& data,
+                                                       size_t node,
+                                                       const std::vector<size_t>& possible_split_vars,
+                                                       const Eigen::ArrayXXd& responses_by_sample,
+                                                       const std::vector<std::vector<size_t>>& samples,
+                                                       std::vector<size_t>& split_vars,
+                                                       std::vector<double>& split_values,
+                                                       std::vector<bool>& send_missing_left) {
   size_t num_samples = samples[node].size();
 
   double weight_sum_node = 0.0;
@@ -246,28 +250,28 @@ bool BTGQInstrumentalSplittingRule::find_best_split(const Data& data,
   return false;
 }
 
-void BTGQInstrumentalSplittingRule::find_best_split_value(const Data& data,
-                                                          size_t node,
-                                                          size_t var,
-                                                          size_t num_samples,
-                                                          double weight_sum_node,
-                                                          double sum_node,
-                                                          double mean_node_z,
-                                                          size_t num_node_small_z,
-                                                          double sum_node_z,
-                                                          double sum_node_z_squared,
-                                                          double outcome_sum_node,
-                                                          double treatment_sum_node,
-                                                          double outcome_instrument_sum_node,
-                                                          double treatment_instrument_sum_node,
-                                                          double target_group_sum_node,
-                                                          double min_child_size,
-                                                          double& best_value,
-                                                          size_t& best_var,
-                                                          double& best_decrease,
-                                                          bool& best_send_missing_left,
-                                                          const Eigen::ArrayXXd& responses_by_sample,
-                                                          const std::vector<std::vector<size_t>>& samples) {
+void BTGQMaxInstrumentalSplittingRule::find_best_split_value(const Data& data,
+                                                             size_t node,
+                                                             size_t var,
+                                                             size_t num_samples,
+                                                             double weight_sum_node,
+                                                             double sum_node,
+                                                             double mean_node_z,
+                                                             size_t num_node_small_z,
+                                                             double sum_node_z,
+                                                             double sum_node_z_squared,
+                                                             double outcome_sum_node,
+                                                             double treatment_sum_node,
+                                                             double outcome_instrument_sum_node,
+                                                             double treatment_instrument_sum_node,
+                                                             double target_group_sum_node,
+                                                             double min_child_size,
+                                                             double& best_value,
+                                                             size_t& best_var,
+                                                             double& best_decrease,
+                                                             bool& best_send_missing_left,
+                                                             const Eigen::ArrayXXd& responses_by_sample,
+                                                             const std::vector<std::vector<size_t>>& samples) {
   std::vector<double> possible_split_values;
   std::vector<size_t> sorted_samples;
   data.get_all_values(possible_split_values, sorted_samples, samples[node], var);

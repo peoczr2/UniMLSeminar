@@ -3,7 +3,7 @@ file_arg <- "--file="
 script_path <- sub(file_arg, "", args[grep(file_arg, args)])
 
 if (length(script_path) != 1 || !nzchar(script_path)) {
-  stop("Run this script with Rscript scripts/run_simulations.R", call. = FALSE)
+  stop("Run this script with Rscript scripts/run_btgq_max_only_simulations.R", call. = FALSE)
 }
 
 repo_root <- normalizePath(
@@ -18,6 +18,8 @@ source(file.path(repo_root, "simulations", "scenario_1_high_corr_tau_z.R"))
 source(file.path(repo_root, "simulations", "scenario_2_low_corr_tau_z.R"))
 source(file.path(repo_root, "simulations", "scenario_3_low_corr_tau_z_x2_same_sign.R"))
 source(file.path(repo_root, "simulations", "scenario_4_low_corr_tau_z_x2_opposite_sign.R"))
+ensure_local_library(repo_root)
+suppressPackageStartupMessages(library(beat))
 
 config <- parse_cli_args(list(
   reps = 3,
@@ -30,23 +32,25 @@ config <- parse_cli_args(list(
 ))
 
 dir.create(config$output_dir, recursive = TRUE, showWarnings = FALSE)
-ensure_local_library(repo_root)
 
-suppressPackageStartupMessages(library(beat))
-
-all_results <- list()
 scenario_runners <- list(
-  scenario_1_high_corr_tau_z = run_scenario_1_high_corr_tau_z,
-  scenario_2_low_corr_tau_z = run_scenario_2_low_corr_tau_z,
-  scenario_3_low_corr_tau_z_x2_same_sign = run_scenario_3_low_corr_tau_z_x2_same_sign,
-  scenario_4_low_corr_tau_z_x2_opposite_sign = run_scenario_4_low_corr_tau_z_x2_opposite_sign
+  run_scenario_1_high_corr_tau_z,
+  run_scenario_2_low_corr_tau_z,
+  run_scenario_3_low_corr_tau_z_x2_same_sign,
+  run_scenario_4_low_corr_tau_z_x2_opposite_sign
+)
+scenario_names <- c(
+  "scenario_1_high_corr_tau_z",
+  "scenario_2_low_corr_tau_z",
+  "scenario_3_low_corr_tau_z_x2_same_sign",
+  "scenario_4_low_corr_tau_z_x2_opposite_sign"
 )
 
-scenario_counter <- 1L
-for (scenario_name in names(scenario_runners)) {
+updated_rows <- list()
+for (i in seq_along(scenario_runners)) {
   for (rep_id in seq_len(config$reps)) {
-    seed <- 1000 + rep_id + scenario_counter * 100
-    result <- scenario_runners[[scenario_name]](
+    seed <- 1000 + rep_id + i * 100
+    result <- scenario_runners[[i]](
       repo_root = repo_root,
       output_dir = config$output_dir,
       n_train = as.integer(config$n_train),
@@ -54,40 +58,40 @@ for (scenario_name in names(scenario_runners)) {
       num_trees = as.integer(config$num_trees),
       beat_penalty = config$beat_penalty,
       target_share = config$target_share,
-      seed = seed
+      seed = seed,
+      methods_to_run = c("BTGQ_MAX")
     )
-    metrics_df <- result
-    metrics_df$replication <- rep_id
-    metrics_df$n_train <- as.integer(config$n_train)
-    metrics_df$n_test <- as.integer(config$n_test)
-    metrics_df$num_trees <- as.integer(config$num_trees)
-    metrics_df$beat_penalty <- config$beat_penalty
-    metrics_df$target_share <- config$target_share
-    all_results[[length(all_results) + 1L]] <- metrics_df
+    result$replication <- rep_id
+    result$n_train <- as.integer(config$n_train)
+    result$n_test <- as.integer(config$n_test)
+    result$num_trees <- as.integer(config$num_trees)
+    result$beat_penalty <- config$beat_penalty
+    result$target_share <- config$target_share
+    result$scenario <- scenario_names[[i]]
+    updated_rows[[length(updated_rows) + 1L]] <- result
   }
-  scenario_counter <- scenario_counter + 1L
 }
 
-results_df <- do.call(rbind, all_results)
+new_rows <- do.call(rbind, updated_rows)
+existing_results <- read.csv(file.path(config$output_dir, "simulation_results.csv"))
+remaining_results <- existing_results[existing_results$method != "BTGQ_MAX", , drop = FALSE]
+results_df <- rbind(remaining_results, new_rows)
+
 mean_or_na <- function(x) {
   if (all(is.na(x))) {
     return(NA_real_)
   }
   mean(x, na.rm = TRUE)
 }
+
 summary_df <- aggregate(
   results_df[, c("efficiency", "raw_imbalance", "imbalance", "targeted_group_demo", "budget_actual", "maximum_viable_ceiling_z0", "maximum_viable_ceiling_z1", "delta_policy")],
   by = list(scenario = results_df$scenario, method = results_df$method),
   FUN = mean_or_na
 )
 
-raw_path <- file.path(config$output_dir, "simulation_results.csv")
-summary_path <- file.path(config$output_dir, "simulation_summary.csv")
+write.csv(results_df, file.path(config$output_dir, "simulation_results.csv"), row.names = FALSE)
+write.csv(summary_df, file.path(config$output_dir, "simulation_summary.csv"), row.names = FALSE)
 
-write.csv(results_df, raw_path, row.names = FALSE)
-write.csv(summary_df, summary_path, row.names = FALSE)
-
-cat("Simulation run completed.\n")
-cat("Raw results:", raw_path, "\n")
-cat("Summary:", summary_path, "\n\n")
-print(summary_df)
+cat("BTGQ-Max-only simulation refresh completed.\n")
+print(subset(summary_df, method == "BTGQ_MAX"))

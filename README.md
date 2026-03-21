@@ -15,6 +15,7 @@ The paper PDF and appendix are stored in the repository root. The research propo
 - `scripts/run_simulations.R`: runs the reusable simulation framework for comparing paper-style scenarios and methods
 - `simulations/`: flat simulation files with one file per method and one file per scenario
 - `scripts/run_btgq_smoke_test.R`: runs a small BTGQ causal forest example and tunes `lambda` to a quota target
+- `scripts/run_btgq_max_smoke_test.R`: runs the BTGQ-Max variant with a dynamic budget ceiling
 - `main.tex`: project proposal and extension ideas
 
 Vendoring the package instead of linking to it as a submodule means future changes to BEAT are tracked directly in this repository. That is the safer setup for a research codebase where you expect to modify the upstream implementation.
@@ -87,6 +88,16 @@ Rscript scripts/run_btgq_smoke_test.R
 ```
 
 This trains a baseline `btgq_causal_forest`, tunes `lambda` with `tune_btgq_causal_forest`, and prints the achieved quota trace.
+
+## Run the BTGQ-Max smoke test
+
+To exercise the BTGQ-Max extension, run:
+
+```powershell
+Rscript scripts/run_btgq_max_smoke_test.R
+```
+
+This uses the BTGQ local split rule and tunes `lambda` with `tune_btgq_max_causal_forest`, reporting the dynamic viable-pool budget and the achieved quota.
 
 ## Where to modify BEAT
 

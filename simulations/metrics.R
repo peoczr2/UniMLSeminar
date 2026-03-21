@@ -112,7 +112,9 @@ evaluate_method <- function(test_data, method_result, target_share, cf_fd_imbala
   targeted_twin <- target_top_share(method_result$twin_score, target_share)
   raw_imbalance <- imbalance_metric(targeted, scenario_imbalance_input(test_data))
   targeted_group_demo <- targeted_group_demographic(targeted, scenario_imbalance_input(test_data))
-  ceiling_values <- maximum_viable_ceiling(test_data, budget_fraction = target_share)
+  budget_actual <- if (!is.null(method_result$budget_actual)) as.numeric(method_result$budget_actual) else NA_real_
+  ceiling_fraction <- if (!is.na(budget_actual)) budget_actual else target_share
+  ceiling_values <- maximum_viable_ceiling(test_data, budget_fraction = ceiling_fraction)
 
   data.frame(
     method = method_result$method,
@@ -120,6 +122,7 @@ evaluate_method <- function(test_data, method_result, target_share, cf_fd_imbala
     raw_imbalance = raw_imbalance,
     imbalance = if (cf_fd_imbalance == 0) NA_real_ else 100 * raw_imbalance / cf_fd_imbalance,
     targeted_group_demo = targeted_group_demo,
+    budget_actual = budget_actual,
     maximum_viable_ceiling_z0 = extract_ceiling_value(ceiling_values, "Z1_0"),
     maximum_viable_ceiling_z1 = extract_ceiling_value(ceiling_values, "Z1_1"),
     delta_policy = delta_policy_metric(targeted, targeted_twin),

@@ -26,6 +26,8 @@ ForestTrainer balanced_instrumental_trainer(double reduced_form_weight,
                                             bool stabilize_splits);
 ForestTrainer btgq_instrumental_trainer(double reduced_form_weight,
                                         bool stabilize_splits);
+ForestTrainer btgq_max_instrumental_trainer(double reduced_form_weight,
+                                           bool stabilize_splits);
 ForestTrainer btgq_dumb_instrumental_trainer(double reduced_form_weight,
                                             bool stabilize_splits);
 ForestTrainer instrumental_trainer(double reduced_form_weight,

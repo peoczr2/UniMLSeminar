@@ -83,6 +83,7 @@ install_pinned_if_needed("RcppEigen", "0.3.3.7.0")
 install_pinned_if_needed("RcppArmadillo", "0.11.4.0.1")
 
 install_if_missing(c(
+  "Rcpp",
   "data.table",
   "DiceKriging",
   "lmtest",

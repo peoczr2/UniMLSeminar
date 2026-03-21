@@ -1,4 +1,4 @@
-run_scenario_2_low_corr_tau_z <- function(repo_root, output_dir, n_train, n_test, num_trees, beat_penalty, target_share, seed) {
+run_scenario_2_low_corr_tau_z <- function(repo_root, output_dir, n_train, n_test, num_trees, beat_penalty, target_share, seed, methods_to_run = NULL) {
   set.seed(seed)
 
   n_total <- n_train + n_test
@@ -71,41 +71,56 @@ run_scenario_2_low_corr_tau_z <- function(repo_root, output_dir, n_train, n_test
     )
   )
 
-  method_results <- list(
-    fit_cf_fd(sim_data, num_trees, seed),
-    fit_cf_np(sim_data, num_trees, seed + 10),
-    fit_debiased(sim_data, num_trees, seed + 20),
-    fit_beat(sim_data, num_trees, beat_penalty, seed + 30),
-    fit_btgq(sim_data, num_trees, seed + 40, budget = 0.5, target_quota = 0.5, use_validation = FALSE, method_name = "BTGQ"),
-    fit_btgq(sim_data, num_trees, seed + 50, budget = 0.5, target_quota = 0.5, use_validation = TRUE, method_name = "BTGQ_VALID"),
-    fit_btgq_dumb(sim_data, num_trees, seed + 60, budget = 0.5, target_quota = 0.5, use_validation = FALSE, method_name = "BTGQ_DUMB")
-  )
+  if (is.null(methods_to_run)) {
+    methods_to_run <- c("CF-FD", "CF-NP", "DEBIASED", "BEAT", "BTGQ", "BTGQ_VALID", "BTGQ_MAX")
+  }
+  methods_to_run <- toupper(methods_to_run)
+  include_method <- function(name) name %in% methods_to_run
 
-  btgq_plot_path <- file.path(output_dir, sprintf("scenario_2_low_corr_tau_z_btgq_lambda_trace_seed_%s.png", seed))
-  plot_btgq_lambda_trace(
-    method_results[[5]]$lambda_trace,
-    btgq_plot_path,
-    "Scenario 2 BTGQ: Lambda vs Targeted Group Demo",
-    target_quota = 0.5
-  )
+  cf_fd_result <- fit_cf_fd(sim_data, num_trees, seed)
+  method_results <- list()
+  if (include_method("CF-FD")) method_results[[length(method_results) + 1L]] <- cf_fd_result
+  if (include_method("CF-NP")) method_results[[length(method_results) + 1L]] <- fit_cf_np(sim_data, num_trees, seed + 10)
+  if (include_method("DEBIASED")) method_results[[length(method_results) + 1L]] <- fit_debiased(sim_data, num_trees, seed + 20)
+  if (include_method("BEAT")) method_results[[length(method_results) + 1L]] <- fit_beat(sim_data, num_trees, beat_penalty, seed + 30)
+  if (include_method("BTGQ")) method_results[[length(method_results) + 1L]] <- fit_btgq(sim_data, num_trees, seed + 40, budget = 0.5, target_quota = 0.5, use_validation = FALSE, method_name = "BTGQ")
+  if (include_method("BTGQ_VALID")) method_results[[length(method_results) + 1L]] <- fit_btgq(sim_data, num_trees, seed + 50, budget = 0.5, target_quota = 0.5, use_validation = TRUE, method_name = "BTGQ_VALID")
+  if (include_method("BTGQ_MAX")) method_results[[length(method_results) + 1L]] <- fit_btgq_max(sim_data, num_trees, seed + 60, budget_max = 0.5, target_quota = 0.5, use_validation = FALSE, method_name = "BTGQ_MAX")
 
-  btgq_valid_plot_path <- file.path(output_dir, sprintf("scenario_2_low_corr_tau_z_btgq_valid_lambda_trace_seed_%s.png", seed))
-  plot_btgq_lambda_trace(
-    method_results[[6]]$lambda_trace,
-    btgq_valid_plot_path,
-    "Scenario 2 BTGQ_VALID: Lambda vs Targeted Group Demo",
-    target_quota = 0.5
-  )
+  result_names <- vapply(method_results, `[[`, character(1), "method")
+  if ("BTGQ" %in% result_names) {
+    btgq_plot_path <- file.path(output_dir, sprintf("scenario_2_low_corr_tau_z_btgq_lambda_trace_seed_%s.png", seed))
+    plot_btgq_lambda_trace(
+      method_results[[which(result_names == "BTGQ")[1]]]$lambda_trace,
+      btgq_plot_path,
+      "Scenario 2 BTGQ: Lambda vs Targeted Group Demo",
+      target_quota = 0.5
+    )
+  }
 
-  btgq_dumb_plot_path <- file.path(output_dir, sprintf("scenario_2_low_corr_tau_z_btgq_dumb_lambda_trace_seed_%s.png", seed))
-  plot_btgq_lambda_trace(
-    method_results[[7]]$lambda_trace,
-    btgq_dumb_plot_path,
-    "Scenario 2 BTGQ_DUMB: Lambda vs Targeted Group Demo",
-    target_quota = 0.5
-  )
+  if ("BTGQ_VALID" %in% result_names) {
+    btgq_valid_plot_path <- file.path(output_dir, sprintf("scenario_2_low_corr_tau_z_btgq_valid_lambda_trace_seed_%s.png", seed))
+    plot_btgq_lambda_trace(
+      method_results[[which(result_names == "BTGQ_VALID")[1]]]$lambda_trace,
+      btgq_valid_plot_path,
+      "Scenario 2 BTGQ_VALID: Lambda vs Targeted Group Demo",
+      target_quota = 0.5
+    )
+  }
 
-  cf_fd_targeted <- target_top_share(method_results[[1]]$score, target_share)
+  if ("BTGQ_MAX" %in% result_names) {
+    btgq_max_plot_path <- file.path(output_dir, sprintf("scenario_2_low_corr_tau_z_btgq_max_lambda_trace_seed_%s.png", seed))
+    plot_btgq_lambda_trace(
+      method_results[[which(result_names == "BTGQ_MAX")[1]]]$lambda_trace,
+      btgq_max_plot_path,
+      "Scenario 2 BTGQ_MAX: Lambda vs Targeted Group Demo",
+      target_quota = 0.5,
+      color_by = "budget.actual",
+      color_label = "Budget size"
+    )
+  }
+
+  cf_fd_targeted <- target_top_share(cf_fd_result$score, target_share)
   cf_fd_imbalance <- imbalance_metric(cf_fd_targeted, scenario_imbalance_input(sim_data$test))
 
   metrics_df <- do.call(
@@ -116,9 +131,11 @@ run_scenario_2_low_corr_tau_z <- function(repo_root, output_dir, n_train, n_test
   )
   metrics_df$scenario <- "scenario_2_low_corr_tau_z"
 
-  scores_df <- build_scores_frame(sim_data$test, method_results)
-  plot_path <- file.path(output_dir, "scenario_2_low_corr_tau_z.png")
-  plot_method_scores(scores_df, plot_path, "Scenario 2: Low corr, tau = f(Z)")
+  if (length(method_results) > 0) {
+    scores_df <- build_scores_frame(sim_data$test, method_results)
+    plot_path <- file.path(output_dir, "scenario_2_low_corr_tau_z.png")
+    plot_method_scores(scores_df, plot_path, "Scenario 2: Low corr, tau = f(Z)")
+  }
 
   metrics_df
 }
